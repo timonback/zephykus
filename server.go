@@ -32,9 +32,11 @@ func server(ingressChannel chan string) {
 	logger.Println("Server is starting...")
 
 	router := http.NewServeMux()
-	router.Handle("/", index())
-	router.Handle("/ingress", ingress())
+	router.Handle("/api/ingress", ingress())
 	router.Handle("/healthz", healthz())
+	//router.Handle("/", index())
+	router.Handle("/", http.StripPrefix("/", http.FileServer(http.Dir("static"))))
+	//router.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("static"))))
 
 	nextRequestID := func() string {
 		return fmt.Sprintf("%d", time.Now().UnixNano())
@@ -87,10 +89,10 @@ func server(ingressChannel chan string) {
 
 func ingress() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
 		w.Header().Set("X-Content-Type-Options", "nosniff")
 		w.WriteHeader(http.StatusOK)
-		fmt.Fprintln(w, ingressStatus)
+		fmt.Fprintf(w, ingressStatus)
 	})
 }
 

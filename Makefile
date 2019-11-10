@@ -26,8 +26,11 @@ all: install
 install:
 	go install -v
 
-build:
+build-go:
 	env GOOS=$(ARCH) go build -v .
+build-webpack:
+	cd frontend && npm run build
+build: build-go build-webpack
 
 test:
 	go test ./... -v

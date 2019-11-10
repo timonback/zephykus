@@ -15,11 +15,13 @@ limitations under the License.
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"time"
 
-	"k8s.io/apimachinery/pkg/api/errors"
+	v1beta1 "k8s.io/api/networking/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 )
@@ -39,28 +41,33 @@ func main() {
 		panic(err.Error())
 	}
 	for {
-		// get pods in all the namespaces by omitting namespace
-		// Or specify namespace to get pods in particular namespace
 		pods, err := clientset.CoreV1().Pods("").List(metav1.ListOptions{})
 		if err != nil {
 			panic(err.Error())
 		}
-		clusterIngresses <- fmt.Sprintf("There are %d pods in the cluster\n", len(pods.Items))
 		fmt.Printf("There are %d pods in the cluster\n", len(pods.Items))
 
-		// Examples for error handling:
-		// - Use helper functions e.g. errors.IsNotFound()
-		// - And/or cast to StatusError and use its properties like e.g. ErrStatus.Message
-		_, err = clientset.CoreV1().Pods("default").Get("example-xxxxx", metav1.GetOptions{})
-		if errors.IsNotFound(err) {
-			fmt.Printf("Pod example-xxxxx not found in default namespace\n")
-		} else if statusError, isStatus := err.(*errors.StatusError); isStatus {
-			fmt.Printf("Error getting pod %v\n", statusError.ErrStatus.Message)
-		} else if err != nil {
+		var ingressRules []v1beta1.Ingress
+
+		namespaces, err := clientset.CoreV1().Namespaces().List(metav1.ListOptions{})
+		if err != nil {
 			panic(err.Error())
-		} else {
-			fmt.Printf("Found example-xxxxx pod in default namespace\n")
 		}
+		for _, namespace := range namespaces.Items {
+			namespaceName := namespace.Name
+			ingresses, err := clientset.NetworkingV1beta1().Ingresses(namespaceName).List(v1.ListOptions{})
+			if err != nil {
+				panic(err.Error())
+			}
+			for _, ingress := range ingresses.Items {
+				ingressRules = append(ingressRules, ingress)
+			}
+		}
+
+		ingressJsonBytes, err := json.Marshal(ingressRules)
+		ingressJson := string(ingressJsonBytes)
+		clusterIngresses <- ingressJson
+		fmt.Printf("%s\n", ingressJson)
 
 		time.Sleep(10 * time.Second)
 	}
