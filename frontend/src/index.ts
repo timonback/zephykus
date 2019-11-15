@@ -1,25 +1,11 @@
+
 import vis from "vis-network"
 import axios from "axios"
+import { findCommon } from './utils'
 import './index.css';
 
-// create an array with nodes
-var nodes = new vis.DataSet([
-  { id: 1, label: "Node 1", title: "I have a popup!" },
-  { id: 2, label: "Node 2", title: "I have a popup!" },
-  { id: 3, label: "Node 3", title: "I have a popup!" },
-  { id: 4, label: "Node 4", title: "I have a popup!" },
-  { id: 5, label: "Node 5", title: "I have a popup!" }
-]);
-
-// create an array with edges
-var edges = new vis.DataSet([
-  { from: 1, to: 3 },
-  { from: 1, to: 2 },
-  { from: 2, to: 4 },
-  { from: 2, to: 5 }
-]);
-
-// create a network
+var nodes = new vis.DataSet([]);
+var edges = new vis.DataSet([]);
 var data = {
   nodes: nodes,
   edges: edges
@@ -28,97 +14,20 @@ var data = {
 var options = {
   interaction: { hover: true },
   layout: {
-    hierarchical: {
-      direction: "UD",
-      sortMethod: "directed"
-    }
+    //hierarchical: {
+    //  shakeTowards: "leaves",
+    //  sortMethod: "directed"
+    //}
   },
   edges: {
     arrows: "to"
   }
 };
 
-var container = document.getElementById("ingress-network");
-var network = new vis.Network(container, data, options);
+const htmlContainer = document.getElementById("ingress-network");
+const network = new vis.Network(htmlContainer, data, options);
 
-network.on("click", function (params) {
-  params.event = "[original event]";
-  document.getElementById("eventSpan").innerHTML =
-    "<h2>Click event:</h2>" + JSON.stringify(params, null, 4);
-  console.log(
-    "click event, getNodeAt returns: " + this.getNodeAt(params.pointer.DOM)
-  );
-});
-network.on("doubleClick", function (params) {
-  params.event = "[original event]";
-  document.getElementById("eventSpan").innerHTML =
-    "<h2>doubleClick event:</h2>" + JSON.stringify(params, null, 4);
-});
-network.on("oncontext", function (params) {
-  params.event = "[original event]";
-  document.getElementById("eventSpan").innerHTML =
-    "<h2>oncontext (right click) event:</h2>" + JSON.stringify(params, null, 4);
-});
-network.on("dragStart", function (params) {
-  // There's no point in displaying this event on screen, it gets immediately overwritten
-  params.event = "[original event]";
-  console.log("dragStart Event:", params);
-  console.log(
-    "dragStart event, getNodeAt returns: " + this.getNodeAt(params.pointer.DOM)
-  );
-});
-network.on("dragging", function (params) {
-  params.event = "[original event]";
-  document.getElementById("eventSpan").innerHTML =
-    "<h2>dragging event:</h2>" + JSON.stringify(params, null, 4);
-});
-network.on("dragEnd", function (params) {
-  params.event = "[original event]";
-  document.getElementById("eventSpan").innerHTML =
-    "<h2>dragEnd event:</h2>" + JSON.stringify(params, null, 4);
-  console.log("dragEnd Event:", params);
-  console.log(
-    "dragEnd event, getNodeAt returns: " + this.getNodeAt(params.pointer.DOM)
-  );
-});
-network.on("zoom", function (params) {
-  document.getElementById("eventSpan").innerHTML =
-    "<h2>zoom event:</h2>" + JSON.stringify(params, null, 4);
-});
-network.on("showPopup", function (params) {
-  document.getElementById("eventSpan").innerHTML =
-    "<h2>showPopup event: </h2>" + JSON.stringify(params, null, 4);
-});
-network.on("hidePopup", function () {
-  console.log("hidePopup Event");
-});
-network.on("select", function (params) {
-  console.log("select Event:", params);
-});
-network.on("selectNode", function (params) {
-  console.log("selectNode Event:", params);
-});
-network.on("selectEdge", function (params) {
-  console.log("selectEdge Event:", params);
-});
-network.on("deselectNode", function (params) {
-  console.log("deselectNode Event:", params);
-});
-network.on("deselectEdge", function (params) {
-  console.log("deselectEdge Event:", params);
-});
-network.on("hoverNode", function (params) {
-  console.log("hoverNode Event:", params);
-});
-network.on("hoverEdge", function (params) {
-  console.log("hoverEdge Event:", params);
-});
-network.on("blurNode", function (params) {
-  console.log("blurNode Event:", params);
-});
-network.on("blurEdge", function (params) {
-  console.log("blurEdge Event:", params);
-});
+
 
 axios.get('/api/ingress')
   .then(function (response: any) {
@@ -126,22 +35,113 @@ axios.get('/api/ingress')
     nodes.clear();
     edges.clear();
 
-    var services = new Map();
-    services.set("root", 1);
-    nodes.add({id: 1, label: "root"})
+    var serviceMap = new Map();
+    nodes.add({ id: 0, label: "Kubernetes Ingress", title: "Kubernetes Ingress Entrypoint"})
 
-    for (var ingress in response.data) {
-      var namespace = response.data[ingress]["metadata"]["namespace"]
-      for(var rule in response.data[ingress]["spec"]["rules"]) {
-        for(var path in response.data[ingress]["spec"]["rules"][rule]["http"]["paths"]) {
-          const serviceName = response.data[ingress]["spec"]["rules"][rule]["http"]["paths"][path]["backend"]["serviceName"]
-          const servicePort = response.data[ingress]["spec"]["rules"][rule]["http"]["paths"][path]["backend"]["servicePort"]
-          if(!services.has(serviceName)) {
-            services.set(serviceName, services.size + 1)
-            nodes.add({id: services.size, label: serviceName, title: serviceName+"."+namespace})
+    const ingressClasses: Map<string, number> = new Map();
+    const pods: Map<string, number> = new Map();
+    // map of LabelKey -> LabelValue -> Pod
+    const podLabels: Map<string, Map<string, string[]>> = new Map();
+    for (const podKey in response.data["pods"]) {
+      const pod = response.data["pods"][podKey]
+      const namespace: string = pod["metadata"]["namespace"]
+      const podName: string = pod["metadata"]["name"]
+
+      let containerPortMappings: string[] = []
+      const containers = pod["spec"]["containers"]
+      for (const containerKey in containers) {
+        const container = containers[containerKey]
+
+        const containerOpenPorts: string[] = [];
+        const containerPorts = containers[containerKey]["ports"]
+        for (const portMappingKey in containerPorts) {
+          const portMapping = containerPorts[portMappingKey]
+          containerOpenPorts.push(portMapping["containerPort"])
+        }
+        containerPortMappings.push(containerOpenPorts.join(","))
+
+        // check for ingress-class
+        for (const containerArgsKey in container["args"]) {
+          const containerArg: string = container["args"][containerArgsKey]
+          const match = containerArg.match(/-ingress-class=([a-zA-Z-]+)/)
+          if (match !== null) {
+            // This ingress rule is handled by another ingress
+            ingressClasses.set(match[1], nodes.length)
           }
-          var serviceNodeId = services.get(serviceName)
-          edges.add({from: 1, to: serviceNodeId, label: response.data[ingress]["spec"]["rules"][rule]["http"]["paths"][path]["path"]});
+        }
+      }
+
+      for (const podLabelKey in pod["metadata"]["labels"]) {
+        const podLabelWithNamespace = podLabelKey + "." + namespace
+        if (!podLabels.has(podLabelWithNamespace)) {
+          podLabels.set(podLabelWithNamespace, new Map());
+        }
+        const labelKey = podLabels.get(podLabelWithNamespace)
+
+        const podLabelValue: string = pod["metadata"]["labels"][podLabelKey]
+        if (!labelKey.has(podLabelValue)) {
+          labelKey.set(podLabelValue, []);
+        }
+        labelKey.get(podLabelValue).push(podName)
+      }
+
+      pods.set(podName + "." + namespace, nodes.length)
+      nodes.add({ id: nodes.length, label: podName + "." + namespace, title: "Open ports: " + containerPortMappings.join(", ") })
+    }
+
+    const services = response.data["services"];
+    for (const service in services) {
+      const serviceName: string = services[service]["metadata"]["name"]
+      const namespace: string = services[service]["metadata"]["namespace"]
+      const ports = services[service]["spec"]["ports"]
+
+      const selectedPods: string[][] = []
+      const serviceSelector: { [key: string]: string } = services[service]["spec"]["selector"] ? services[service]["spec"]["selector"] : [];
+      for (const selectorKey in serviceSelector) {
+        const selectorValue: string = serviceSelector[selectorKey]
+        selectedPods.push(podLabels.get(selectorKey + "." + namespace).get(selectorValue))
+      }
+      const selectedPodsAllMatched = findCommon(selectedPods)
+      for (const podNameKey in selectedPodsAllMatched) {
+        const selectorPodName = selectedPodsAllMatched[podNameKey] + "." + namespace
+        const podNodeId = pods.get(selectorPodName);
+        edges.add({ from: nodes.length, to: podNodeId });
+      }
+
+
+      let portMappings: string[] = []
+      for (const portMappingKey in ports) {
+        const portMapping = ports[portMappingKey]
+        portMappings.push(portMapping["port"] + ":" + portMapping["targetPort"])
+      }
+
+      serviceMap.set(serviceName + "." + namespace, nodes.length)
+      nodes.add({ id: nodes.length, label: serviceName + "." + namespace, title: "Port mappings: " + portMappings.join(", ")})
+    }
+
+    const ingresses = response.data["ingresses"];
+    for (var ingress in ingresses) {
+      const namespace: string = ingresses[ingress]["metadata"]["namespace"]
+
+      let fromNode = 0
+      const annotations = ingresses[ingress]["metadata"]["annotations"]
+      for (const annotationKey in annotations) {
+        if (annotationKey === "kubernetes.io/ingress.class") {
+          // This ingress rule is handled by another ingress
+          const ingressClass: string = annotations[annotationKey]
+          fromNode = ingressClasses.get(ingressClass)
+        }
+      }
+
+      for (var ruleKey in ingresses[ingress]["spec"]["rules"]) {
+        const rule = ingresses[ingress]["spec"]["rules"][ruleKey]
+        for (var pathKey in rule["http"]["paths"]) {
+          const host: string = rule["host"] ? rule["host"] : ""
+          const path: string = rule["http"]["paths"][pathKey]
+          const serviceName: string = path["backend"]["serviceName"]
+
+          var serviceNodeId = serviceMap.get(serviceName + "." + namespace)
+          edges.add({ from: fromNode, to: serviceNodeId, label: host + path["path"] });
         }
       }
     }

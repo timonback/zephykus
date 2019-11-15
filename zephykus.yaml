@@ -51,7 +51,7 @@ metadata:
   name: zephykus-service
   namespace: default
   labels:
-    app: zephykus
+    app: zephykus-service
 spec:
   selector:
     app: zephykus
@@ -62,3 +62,17 @@ spec:
     targetPort: 80
   sessionAffinity: None
   type: NodePort
+---
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  name: zephykus-ingress
+  namespace: default
+spec:
+  rules:
+  - http:
+      paths:
+      - path: /other
+        backend:
+          serviceName: zephykus-service
+          servicePort: 80

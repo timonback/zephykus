@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"flag"
 	"fmt"
 	"log"
@@ -19,12 +20,12 @@ const (
 )
 
 var (
-	listenAddr    string
-	healthy       int32
-	ingressStatus string = "Unknown"
+	listenAddr string
+	healthy    int32
+	state      k8sState
 )
 
-func server(ingressChannel chan string) {
+func server(k8sState chan k8sState) {
 	flag.StringVar(&listenAddr, "listen-addr", ":80", "server listen address")
 	flag.Parse()
 
@@ -53,8 +54,8 @@ func server(ingressChannel chan string) {
 
 	go func() {
 		for {
-			message := <-ingressChannel
-			ingressStatus = message
+			message := <-k8sState
+			state = message
 		}
 	}()
 
@@ -92,7 +93,8 @@ func ingress() http.Handler {
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
 		w.Header().Set("X-Content-Type-Options", "nosniff")
 		w.WriteHeader(http.StatusOK)
-		fmt.Fprintf(w, ingressStatus)
+		message, _ := json.Marshal(state)
+		fmt.Fprintf(w, string(message))
 	})
 }
 
