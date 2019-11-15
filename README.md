@@ -8,6 +8,18 @@ Entrypoint is the *Kubernetes Ingress* node. Two ingress rules are defined (`zep
 
 Hovering over each entity reveals additional information like ingress annotations, port configuration and service types.
 
+## Usage
+
+Install zephykus to your cluster.
+```
+kubectl apply -f zephykus.yaml
+```
+
+Access the web-interface locally at http://localhost:3000/
+```
+kubectl -n default port-forward svc/zephykus-service 3000:80
+```
+
 ## Future Improvements
 
 - [ ] Better UI
