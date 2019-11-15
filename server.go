@@ -35,9 +35,8 @@ func server(k8sState chan k8sState) {
 	router := http.NewServeMux()
 	router.Handle("/api/ingress", ingress())
 	router.Handle("/healthz", healthz())
-	//router.Handle("/", index())
+	router.Handle("/hello", index())
 	router.Handle("/", http.StripPrefix("/", http.FileServer(http.Dir("static"))))
-	//router.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("static"))))
 
 	nextRequestID := func() string {
 		return fmt.Sprintf("%d", time.Now().UnixNano())

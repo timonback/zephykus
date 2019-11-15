@@ -10,7 +10,6 @@ DOCKER_CLI      :=      docker
 VERSION         :=      $(shell cat ./VERSION)
 ARCH            :=      linux
 IMAGE_NAME      :=      timonback/zephykus
-DEPLOY_NAME     :=      zephykus
 
 
 # As a call to `make` without any arguments leads to the execution

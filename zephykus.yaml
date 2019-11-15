@@ -72,7 +72,7 @@ spec:
   rules:
   - http:
       paths:
-      - path: /other
+      - path: /zephykus
         backend:
           serviceName: zephykus-service
           servicePort: 80
