@@ -17,6 +17,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: zephykus-deployment
+  namespace: default
 spec:
   selector:
     matchLabels:
@@ -28,7 +29,7 @@ spec:
     spec:
       containers:
       - image: timonback/zephykus
-        imagePullPolicy: Never
+        imagePullPolicy: Always
         name: zephykus
         ports:
         - containerPort: 80
