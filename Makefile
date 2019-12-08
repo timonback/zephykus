@@ -41,6 +41,8 @@ image: build
 	$(DOCKER_CLI) build -t $(IMAGE_NAME) .
 image-push: image
 	$(DOCKER_CLI) push $(IMAGE_NAME)
+	$(DOCKER_CLI) tag $(IMAGE_NAME) $(IMAGE_NAME):$(VERSION)
+	$(DOCKER_CLI) push $(IMAGE_NAME):$(VERSION)
 
 deploy: image
 	kubectl apply -f zephykus.yaml

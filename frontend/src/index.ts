@@ -4,11 +4,25 @@ import axios from "axios"
 import { findCommon } from './utils'
 import './index.css';
 
-var nodes = new vis.DataSet([]);
-var edges = new vis.DataSet([]);
-var data = {
-  nodes: nodes,
-  edges: edges
+interface VisDataSet {
+  nodes: VisNode[],
+  edges: VisEdge[]
+}
+interface VisNode {
+  id: number,
+  label?: string,
+  title: string
+}
+interface VisEdge {
+  from: number,
+  to: number,
+  label?: string,
+  title?: string
+}
+
+var visData = {
+  nodes: new vis.DataSet([]),
+  edges: new vis.DataSet([])
 };
 var options = {
   interaction: { hover: true },
@@ -17,7 +31,7 @@ var options = {
   }
 };
 const htmlContainer = document.getElementById("ingress-network");
-new vis.Network(htmlContainer, data, options);
+new vis.Network(htmlContainer, visData, options);
 
 // load data
 axios.get('/api/ingress')
@@ -31,9 +45,11 @@ axios.get('/api/ingress')
   });
 
 function renderNetwork(data: any) {
-  nodes.clear();
-  edges.clear();
-  nodes.add({ id: 0, label: "Kubernetes Ingress", title: "Kubernetes Ingress Entrypoint" })
+  const dataset: VisDataSet = {
+    nodes: [],
+    edges: []
+  }
+  dataset.nodes.push({ id: 0, label: "Kubernetes Ingress", title: "Kubernetes Ingress Entrypoint" })
 
   //map of ServiceName to NodeId
   const serviceMap: Map<string, number> = new Map();
@@ -44,14 +60,16 @@ function renderNetwork(data: any) {
   // map of LabelKey -> LabelValue -> PodName
   const podLabels: Map<string, Map<string, string[]>> = new Map();
 
-  processPods(data, ingressClasses, podLabels, pods);
-  processServices(data, podLabels, pods, serviceMap);
-  processIngresses(data, ingressClasses, serviceMap);
+  processPods(data, dataset, ingressClasses, podLabels, pods);
+  processServices(data, dataset, podLabels, pods, serviceMap);
+  processIngresses(data, dataset, ingressClasses, serviceMap);
+  visData.nodes.update(dataset.nodes);
+  visData.edges.update(dataset.edges);
 }
 
 
-function processIngresses(data: any, ingressClasses: Map<string, number>, serviceMap: Map<string, number>) {
-  const ingresses = data["ingresses"];
+function processIngresses(data: any, dataset: VisDataSet, ingressClasses: Map<string, number>, serviceMap: Map<string, number>) {
+  const ingresses = data["ingresses"] ? data["ingresses"] : data["ingressesExtension"];
   for (var ingress in ingresses) {
     const namespace: string = ingresses[ingress]["metadata"]["namespace"];
     let fromNode = 0;
@@ -73,32 +91,46 @@ function processIngresses(data: any, ingressClasses: Map<string, number>, servic
         const path: string = rule["http"]["paths"][pathKey];
         const serviceName: string = path["backend"]["serviceName"];
         var serviceNodeId = serviceMap.get(serviceName + "." + namespace);
-        edges.add({ from: fromNode, to: serviceNodeId, label: host + path["path"], title: edgeLabelAnnotations.join("<br/>") });
+        dataset.edges.push({ from: fromNode, to: serviceNodeId, label: host + path["path"], title: edgeLabelAnnotations.join("<br/>") });
       }
     }
   }
 }
 
-function processServices(data: any, podLabels: Map<string, Map<string, string[]>>, pods: Map<string, number>, serviceMap: Map<string, number>) {
+function processServices(data: any, dataset: VisDataSet, podLabels: Map<string, Map<string, string[]>>, pods: Map<string, number>, serviceMap: Map<string, number>) {
   const services = data["services"];
   for (const service in services) {
     const serviceName: string = services[service]["metadata"]["name"];
     const namespace: string = services[service]["metadata"]["namespace"];
     const ports = services[service]["spec"]["ports"];
     // connect service to pods
+    let foundAllPodSelectors = true;
     const selectedPods: string[][] = [];
     const serviceSelector: {
       [key: string]: string;
     } = services[service]["spec"]["selector"] ? services[service]["spec"]["selector"] : [];
     for (const selectorKey in serviceSelector) {
       const selectorValue: string = serviceSelector[selectorKey];
-      selectedPods.push(podLabels.get(selectorKey + "." + namespace).get(selectorValue));
+      const selectorNamespaceKey: string = selectorKey + "." + namespace;
+      const selector = podLabels.get(selectorNamespaceKey);
+      if (selector) {
+        const podSelector = selector.get(selectorValue);
+        if (podSelector) {
+          selectedPods.push(podSelector);
+        } else {
+          foundAllPodSelectors = false;
+        }
+      } else {
+        foundAllPodSelectors = false;
+      }
     }
-    const selectedPodsAllMatched = findCommon(selectedPods);
-    for (const podNameKey in selectedPodsAllMatched) {
-      const selectorPodName = selectedPodsAllMatched[podNameKey] + "." + namespace;
-      const podNodeId = pods.get(selectorPodName);
-      edges.add({ from: nodes.length, to: podNodeId });
+    if (foundAllPodSelectors) {
+      const selectedPodsAllMatched = findCommon(selectedPods);
+      for (const podNameKey in selectedPodsAllMatched) {
+        const selectorPodName = selectedPodsAllMatched[podNameKey] + "." + namespace;
+        const podNodeId = pods.get(selectorPodName);
+        dataset.edges.push({ from: dataset.nodes.length, to: podNodeId });
+      }
     }
     let title = "Type: " + services[service]["spec"]["type"];
     if (services[service]["spec"]["type"] == "ExternalName") {
@@ -113,12 +145,12 @@ function processServices(data: any, podLabels: Map<string, Map<string, string[]>
       const portMappingTitle = "Port mappings: " + portMappings.join(", ");
       title += "<br/>" + portMappingTitle;
     }
-    serviceMap.set(serviceName + "." + namespace, nodes.length);
-    nodes.add({ id: nodes.length, label: serviceName + "." + namespace, title: title });
+    serviceMap.set(serviceName + "." + namespace, dataset.nodes.length);
+    dataset.nodes.push({ id: dataset.nodes.length, label: serviceName + "." + namespace, title: title });
   }
 }
 
-function processPods(data: any, ingressClasses: Map<string, number>, podLabels: Map<string, Map<string, string[]>>, pods: Map<string, number>) {
+function processPods(data: any, dataset: VisDataSet, ingressClasses: Map<string, number>, podLabels: Map<string, Map<string, string[]>>, pods: Map<string, number>) {
   for (const podKey in data["pods"]) {
     const pod = data["pods"][podKey];
     const namespace: string = pod["metadata"]["namespace"];
@@ -140,7 +172,7 @@ function processPods(data: any, ingressClasses: Map<string, number>, podLabels: 
         const match = containerArg.match(/-ingress-class=([a-zA-Z-]+)/);
         if (match !== null) {
           // This ingress rule is handled by another ingress container
-          ingressClasses.set(match[1], nodes.length);
+          ingressClasses.set(match[1], dataset.nodes.length);
         }
       }
     }
@@ -156,7 +188,7 @@ function processPods(data: any, ingressClasses: Map<string, number>, podLabels: 
       }
       labelKey.get(podLabelValue).push(podName);
     }
-    pods.set(podName + "." + namespace, nodes.length);
-    nodes.add({ id: nodes.length, label: podName + "." + namespace, title: "Ports: " + containerPortMappings.join(", ") });
+    pods.set(podName + "." + namespace, dataset.nodes.length);
+    dataset.nodes.push({ id: dataset.nodes.length, label: podName + "." + namespace, title: "Ports: " + containerPortMappings.join(", ") });
   }
 }

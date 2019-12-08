@@ -5,6 +5,7 @@ import (
 	"time"
 
 	corev1 "k8s.io/api/core/v1"
+	extensionsv1beta1 "k8s.io/api/extensions/v1beta1"
 	v1beta1 "k8s.io/api/networking/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -13,9 +14,10 @@ import (
 )
 
 type k8sState struct {
-	Ingresses []v1beta1.Ingress `json:"ingresses"`
-	Pods      []corev1.Pod      `json:"pods"`
-	Services  []corev1.Service  `json:"services"`
+	Ingresses           []v1beta1.Ingress           `json:"ingresses"`
+	IngressesExtensions []extensionsv1beta1.Ingress `json:"ingressesExtension"`
+	Pods                []corev1.Pod                `json:"pods"`
+	Services            []corev1.Service            `json:"services"`
 }
 
 func main() {
@@ -44,14 +46,16 @@ func main() {
 		}
 
 		ingresses, err := clientset.NetworkingV1beta1().Ingresses("").List(v1.ListOptions{})
-		if err != nil {
+		// Fallback to old ingress definitions
+		ingressesExtensions, errExtensions := clientset.ExtensionsV1beta1().Ingresses("").List(v1.ListOptions{})
+		if err != nil && errExtensions != nil {
 			panic(err.Error())
 		}
 
-		state := k8sState{Ingresses: ingresses.Items, Pods: pods.Items, Services: services.Items}
+		state := k8sState{Ingresses: ingresses.Items, IngressesExtensions: ingressesExtensions.Items, Pods: pods.Items, Services: services.Items}
 		clusterIngresses <- state
 
 		fmt.Printf("%+v\n", state)
-		time.Sleep(15 * time.Second)
+		time.Sleep(60 * time.Second)
 	}
 }
