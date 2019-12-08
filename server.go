@@ -36,6 +36,7 @@ func server(k8sState chan k8sState) {
 	router.Handle("/api/ingress", ingress())
 	router.Handle("/healthz", healthz())
 	router.Handle("/hello", index())
+	router.Handle("/debug", debug())
 	router.Handle("/", http.StripPrefix("/", http.FileServer(http.Dir("static"))))
 
 	nextRequestID := func() string {
@@ -85,6 +86,13 @@ func server(k8sState chan k8sState) {
 
 	<-done
 	logger.Println("Server stopped")
+}
+
+func debug() http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("X-INFO", r.RequestURI)
+		fmt.Fprintln(w, r.RequestURI)
+	})
 }
 
 func ingress() http.Handler {
