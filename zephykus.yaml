@@ -57,7 +57,7 @@ spec:
     spec:
       containers:
       - image: timonback/zephykus
-        imagePullPolicy: Always
+        imagePullPolicy: IfNotPresent
         name: zephykus
         ports:
         - containerPort: 80

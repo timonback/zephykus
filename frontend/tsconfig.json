@@ -5,6 +5,7 @@
     "declaration": true,
     "sourceMap": true,
     "experimentalDecorators": true,
+    "esModuleInterop": true,
     "outDir": "dist",
     "lib": ["es2017", "dom"],
     "noImplicitAny": true,

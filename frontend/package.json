@@ -1,6 +1,6 @@
 {
   "name": "frontend",
-  "version": "1.0.0",
+  "version": "0.0.3",
   "description": "",
   "private": true,
   "scripts": {
@@ -16,11 +16,12 @@
     "ts-loader": "^6.2.1",
     "typescript": "^3.7.2",
     "webpack": "^4.41.2",
-    "webpack-cli": "^3.3.10"
+    "webpack-cli": "^3.3.10",
+    "@types/cytoscape": "^3.8.6"
   },
   "dependencies": {
     "axios": "^0.19.0",
-    "lodash": "^4.17.15",
-    "vis-network": "^6.4.0"
+    "cytoscape": "^3.12.1",
+    "lodash": "^4.17.15"
   }
 }
