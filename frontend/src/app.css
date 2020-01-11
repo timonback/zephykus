@@ -1,0 +1,24 @@
+html, body {
+  height: 100%;
+  margin: 0;
+}
+
+#content {
+  display: flex;
+  height: 100%;
+}
+
+#recommendations {
+  max-height: 100px;
+  overflow: hidden scroll;
+}
+
+#info-box {
+  flex: 0 0 30%;
+  overflow: scroll;
+}
+
+#ingress-network {
+  height: 100%;
+  flex: 1;
+}

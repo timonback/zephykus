@@ -1,8 +1,7 @@
 
-import axios from "axios";
-import { findCommon } from './utils';
-import './index.css';
 import cytoscape from "cytoscape";
+
+import { findCommon } from './utils';
 
 
 interface DataSet {
@@ -10,92 +9,13 @@ interface DataSet {
   edges: cytoscape.EdgeDataDefinition[];
 }
 
-var cy = cytoscape({
-  container: document.getElementById('ingress-network'),
-  style: [
-    {
-      "selector": "node[label]",
-      "style": {
-        "label": "data(label)"
-      }
-    },
-
-    {
-      "selector": "edge[label]",
-      "style": {
-        "label": "data(label)",
-        "width": 3
-      }
-    },
-    {
-      "selector": ".bottom-center",
-      "style": {
-        "text-valign": "bottom",
-        "text-halign": "center"
-      }
-    },
-
-    {
-      "selector": "edge",
-      "style": {
-        "target-arrow-shape": "triangle"
-      }
-    },
-
-    {
-      "selector": ".selected",
-      "style": {
-        "background-color": "orange"
-      }
-    },
-    {
-      "selector": ".highlight",
-      "style": {
-        "background-color": "blue"
-      }
-    },
-  ]
-});
-cy.on('click', 'node', function(event: cytoscape.EventObject) {
-  var node = event.target;
-  document.getElementById("info").innerHTML = node.data().title;
-  highlightConnectedNodes(node);
-});
-cy.on('click', 'edge', function(event: cytoscape.EventObject) {
-  var edge = event.target;
-  document.getElementById("info").innerHTML = edge.data().title;
-  highlightConnectedNodes(edge.connectedNodes());
-});
-function highlightConnectedNodes(node: cytoscape.NodeCollection) {
-  cy.nodes().removeClass("highlight").removeClass("selected");
-  cy.edges().removeClass("highlight").removeClass("selected");
-  node.addClass("selected");
-  node.ancestors().addClass("highlight");
-  node.descendants().addClass("highlight");
-  node.predecessors().addClass("highlight");
-  node.successors().addClass("highlight");
-}
-declare let window: any;
-window.cy = cy;
-
-// load data
-axios.get('/api/ingress')
-  .then(function (response: any) {
-    console.log(response.data)
-    renderNetwork(response.data)
-  })
-  .catch(function (error) {
-    // handle error
-    console.log(error);
-  });
-
-function renderNetwork(data: any) {
+export function renderNetwork(data: any, renderOptions: any): DataSet {
   const dataset = {
     nodes: [] as cytoscape.NodeDataDefinition[],
     edges: [] as cytoscape.EdgeDataDefinition[]
   }
-  dataset.nodes.push({ id: "0", label: "Kubernetes Ingress", title: "Kubernetes Ingress Entrypoint" })
-  dataset.nodes.push({ id: "1", label: "Error Ingress" })
+  dataset.nodes.push({ id: "0", label: "Kubernetes CNI Ingress", title: "Kubernetes Ingress Entrypoint", entrypoint: "root" })
+  dataset.nodes.push({ id: "1", label: "Error Ingress", title: "Holds ill configured ingress rules", entrypoint: "notConnected" })
 
   //map of ServiceName to NodeId
   const serviceMap: Map<string, number> = new Map();
@@ -110,31 +30,18 @@ function renderNetwork(data: any) {
   processServices(data, dataset, podLabels, pods, serviceMap);
   processIngresses(data, dataset, ingressClasses, serviceMap);
 
-  cy.remove(cy.elements());
-  cy.add(dataset.nodes.map(function (el) {
-    return { selector: 'edge', data: el, classes: 'bottom-center' }
-  }
-  ));
-  cy.add(dataset.edges.map(function (el) {
-    return { selector: 'node', data: { ...el}, classes: 'bottom-center' }
-  }
-  ));
-  cy.layout({
-    fit: true,
-    name: "cose"
-  }).run();
+  return dataset;
 }
 
 
 function processIngresses(data: any, dataset: DataSet, ingressClasses: Map<string, number>, serviceMap: Map<string, number>) {
   const ingresses = data["ingresses"] ? data["ingresses"] : data["ingressesExtension"];
-  for (var ingress in ingresses) {
-    const namespace: string = ingresses[ingress]["metadata"]["namespace"];
+  for (var ingressKey in ingresses) {
+    const ingress = ingresses[ingressKey]
+    const namespace: string = ingress["metadata"]["namespace"];
     let fromNode = 0;
-    const annotations = ingresses[ingress]["metadata"]["annotations"];
-    const edgeLabelAnnotations = [];
+    const annotations = ingress["metadata"]["annotations"];
     for (const annotationKey in annotations) {
-      edgeLabelAnnotations.push(annotationKey + ": " + annotations[annotationKey]);
       if (annotationKey === "kubernetes.io/ingress.class") {
         // This ingress rule is handled by another ingress
         const ingressClass: string = annotations[annotationKey];
@@ -142,17 +49,29 @@ function processIngresses(data: any, dataset: DataSet, ingressClasses: Map<strin
       }
     }
     // connect ingress rules to services
-    for (var ruleKey in ingresses[ingress]["spec"]["rules"]) {
-      const rule = ingresses[ingress]["spec"]["rules"][ruleKey];
+    for (var ruleKey in ingress["spec"]["rules"]) {
+      const rule = ingress["spec"]["rules"][ruleKey];
       for (var pathKey in rule["http"]["paths"]) {
         const host: string = rule["host"] ? rule["host"] : "";
         const path: string = rule["http"]["paths"][pathKey];
         const serviceName: string = path["backend"]["serviceName"];
         var serviceNodeId = serviceMap.get(namespace + "." + serviceName);
         if (serviceNodeId) {
-          dataset.edges.push({ id: "" + fromNode + "-" + serviceNodeId, source: "" + fromNode, target: "" + serviceNodeId, label: host + path["path"], title: edgeLabelAnnotations.join("<br/>") });
+          dataset.edges.push({
+            id: "" + fromNode + "-" + serviceNodeId,
+            source: "" + fromNode,
+            target: "" + serviceNodeId,
+            label: host + path["path"],
+            title: JSON.stringify(ingress, null, '  ')
+          });
         } else {
-          dataset.edges.push({ id: "" + fromNode + "-1", source: "" + fromNode, target: "" + "1", label: host + path["path"], title: edgeLabelAnnotations.join("<br/>") });
+          dataset.edges.push({
+            id: "" + fromNode + "-1",
+            source: "" + fromNode,
+            target: "" + "1",
+            label: host + path["path"],
+            title: JSON.stringify(ingress, null, '  ')
+          });
         }
       }
     }
@@ -161,16 +80,17 @@ function processIngresses(data: any, dataset: DataSet, ingressClasses: Map<strin
 
 function processServices(data: any, dataset: DataSet, podLabels: Map<string, Map<string, string[]>>, pods: Map<string, number>, serviceMap: Map<string, number>) {
   const services = data["services"];
-  for (const service in services) {
-    const serviceName: string = services[service]["metadata"]["name"];
-    const namespace: string = services[service]["metadata"]["namespace"];
-    const ports = services[service]["spec"]["ports"];
+  for (const serviceKey in services) {
+    const service = services[serviceKey];
+    const serviceName: string = service["metadata"]["name"];
+    const namespace: string = service["metadata"]["namespace"];
+    const ports = service["spec"]["ports"];
     // connect service to pods
     let foundAllPodSelectors = true;
     const selectedPods: string[][] = [];
     const serviceSelector: {
       [key: string]: string;
-    } = services[service]["spec"]["selector"] ? services[service]["spec"]["selector"] : [];
+    } = service["spec"]["selector"] ? service["spec"]["selector"] : [];
     for (const selectorKey in serviceSelector) {
       const selectorValue: string = serviceSelector[selectorKey];
       const selectorNamespaceKey: string = namespace + "." + selectorKey;
@@ -191,24 +111,27 @@ function processServices(data: any, dataset: DataSet, podLabels: Map<string, Map
       for (const podNameKey in selectedPodsAllMatched) {
         const selectorPodName = namespace + "." + selectedPodsAllMatched[podNameKey];
         const podNodeId = pods.get(selectorPodName);
-        dataset.edges.push({ id: "" + dataset.nodes.length + "-" + podNodeId, source: "" + dataset.nodes.length, target: "" + podNodeId });
+        dataset.edges.push(
+          {
+            id: "" + dataset.nodes.length + "-" + podNodeId,
+            source: "" + dataset.nodes.length,
+            target: "" + podNodeId,
+            label: "",
+          });
       }
-    }
-    let title = "Type: " + services[service]["spec"]["type"];
-    if (services[service]["spec"]["type"] == "ExternalName") {
-      title += "<br/>DNS: " + services[service]["spec"]["externalName"];
-    }
-    else {
-      const portMappings: string[] = [];
-      for (const portMappingKey in ports) {
-        const portMapping = ports[portMappingKey];
-        portMappings.push(portMapping["port"] + ":" + portMapping["targetPort"]);
-      }
-      const portMappingTitle = "Port mappings: " + portMappings.join(", ");
-      title += "<br/>" + portMappingTitle;
     }
     serviceMap.set(namespace + "." + serviceName, dataset.nodes.length);
-    dataset.nodes.push({ id: "" + dataset.nodes.length, label: namespace + "." + serviceName, title: title });
+
+    let node = {
+      id: "" + dataset.nodes.length,
+      label: namespace + "." + serviceName,
+      title: JSON.stringify(service, null, '  '),
+      entrypoint: ""
+    }
+    if (service["spec"]["type"] == "NodePort" || service["spec"]["type"] == "LoadBalancer") {
+      node.entrypoint = service["spec"]["type"];
+    }
+    dataset.nodes.push(node);
   }
 }
 
@@ -251,6 +174,12 @@ function processPods(data: any, dataset: DataSet, ingressClasses: Map<string, nu
       labelKey.get(podLabelValue).push(podName);
     }
     pods.set(namespace + "." + podName, dataset.nodes.length);
-    dataset.nodes.push({ id: "" + dataset.nodes.length, label: namespace + "." + podName, title: "Ports: " + containerPortMappings.join(", ") });
+    let node = {
+      id: "" + dataset.nodes.length,
+      label: namespace + "." + podName,
+      title: JSON.stringify(pod, null, '  '),
+      entrypoint: ""
+    };
+    dataset.nodes.push(node);
   }
 }

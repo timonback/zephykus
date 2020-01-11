@@ -1,12 +1,37 @@
 <!doctype html>
 <html>
-  <head>
-    <title>Zephykus</title>
-  </head>
-  <body>
-    <div id="info"></div>
-    <div id="ingress-network"></div>
 
-    <script src="bundle.js"></script>
-  </body>
+<head>
+  <title>Zephykus</title>
+</head>
+
+<body>
+  <div id="content">
+    <div id="info-box">
+      <div>
+        <button onclick="window.cy.fit()">Fit</button>
+        <button onclick="window.reload()">Refresh</button>
+        <input type="text" id="search" onkeyup="formChanged()"></input>
+        <br/>
+        <ul id="recommendations">
+          <li>Search matches will show up and are clickable</li>
+        </ul>
+      </div>
+      <pre id="code">Click on a resource to see its details</pre>
+    </div>
+
+    <div id="ingress-network"></div>
+  </div>
+
+  <script src="bundle.js"></script>
+  <script type="text/javascript">
+    function formChanged() {
+      const renderOpts = {
+        search: document.getElementById("search").value
+      };
+      window.render(renderOpts);
+    }
+  </script>
+</body>
+
 </html>

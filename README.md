@@ -4,9 +4,18 @@ Zephykus is a tool to visualize ingress rules and flow of network traffic in Kub
 
 ![README_demo.png](README_demo.png)
 
-Entrypoint is the *Kubernetes Ingress* node. Two ingress rules are defined (`zephykus` and `nginx`) that redirect traffic to the corresponding services. Based on the kubernetes label selectors, two pods each do match the service description and will receive the traffic.
+Entrypoint is the *Kubernetes CNI Ingress* node. Two ingress rules are defined (`zephykus` and `nginx`) that redirect traffic to the corresponding services. Based on the kubernetes label selectors, two pods each do match the service description and will receive the traffic.
 
-Hovering over each entity reveals additional information like ingress annotations, port configuration and service types.
+By clicking on each entity additional information like ingress annotations, port configuration and service types are revealed on the left hand side info box.
+
+Color legend:
+
+- Dark border: Search matches
+- Orange: Selected item
+- Green:
+  - Light: Upstream resources
+  - Dark: Downstream resources
+- Red: Publicly exposes services (LoadBalancer, NodePort)
 
 ## Usage
 
@@ -28,7 +37,8 @@ As part of installing, also a default ingress resource is created. This rule may
 
 ## Future Improvements
 
-- [ ] Better UI
-- [ ] Add path url/path input textbox and highlight destination/target pods
-- [ ] Show whether a SSL certificate is attached to an ingress rule
-- [ ] Add pod/service/ingress filter
+- [x] Faster graph handling with Cytograph
+- [ ] Indicate via icons the service resource and additional information like healthiness
+- [ ] Load new cluster state only on request (including caching) instead of pre-fetching
+- [x] Add pod/service/ingress filter
+- [x] Add interactive search suggestions
