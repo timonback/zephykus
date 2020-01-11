@@ -21,7 +21,7 @@ Color legend:
 
 Install zephykus to your cluster.
 ```
-kubectl apply -f zephykus.yaml
+kubectl apply -f https://raw.githubusercontent.com/timonback/zephykus/master/zephykus.yaml
 ```
 
 Access the web-interface locally at http://localhost:3000/
