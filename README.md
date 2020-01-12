@@ -39,6 +39,6 @@ As part of installing, also a default ingress resource is created. This rule may
 
 - [x] Faster graph handling with Cytograph
 - [ ] Indicate via icons the service resource and additional information like healthiness
-- [ ] Load new cluster state only on request (including caching) instead of pre-fetching
+- [x] Load new cluster state only on request (including caching) instead of pre-fetching
 - [x] Add pod/service/ingress filter
 - [x] Add interactive search suggestions

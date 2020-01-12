@@ -56,11 +56,13 @@ function reload() {
   axios.get('/api/ingress')
     .then(function (response: any) {
       console.log(response.data)
+
       render({
         ...renderOptions,
         data: response.data,
         full: true
       });
+      document.getElementById("date").innerText = response.data.timestamp;
     })
     .catch(function (error) {
       console.log(error);
