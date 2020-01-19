@@ -38,9 +38,13 @@ jobs:
       shell: bash
     - name: Install Backend dependencies
       run: go get -v -t -d ./
+      env:
+        GO111MODULE: "on"
     - name: Build Backend
       run: |
         make build-go
+      env:
+        GO111MODULE: "on"
 
   publish:
     needs: [build-frontend, build-backend]
