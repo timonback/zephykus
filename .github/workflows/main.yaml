@@ -3,12 +3,17 @@ on:
   push:
     branches:
       - master
+      - feature/github-action
 
 jobs:
   build-frontend:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
     steps:
     - name: Checkout
       uses: actions/checkout@v1
+    - name: Setup Node.js
+      uses: actions/setup-node@v1.1.0
     - name: Install Frontend dependencies
       run: npm install
       working-directory: ./frontend
@@ -17,18 +22,21 @@ jobs:
         make build-webpack
 
   build-backend:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
     steps:
     - name: Checkout
       uses: actions/checkout@v1
+    - name: Setup Go
+      uses: actions/setup-go@v1.0.0
     - name: Build Backend
       run: |
         make build-go
 
-  build:
-    needs: [build-frontend, build-backend]
-
   publish:
-    needs: [build]
+    needs: [build-frontend, build-backend]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
     - name: Docker Hub Description
       uses: peter-evans/dockerhub-description@v2.1.0
@@ -43,7 +51,7 @@ jobs:
         login-server: hub.docker.com
         username: ${{ secrets.DOCKERHUB_USERNAME }}
         password: ${{ secrets.DOCKERHUB_PASSWORD }}
-      run: |
+    - run: |
         version=$(cat ./VERSION)
         echo $VERSION
         docker build . -t timonback/zephykus:${{ github.sha }}
