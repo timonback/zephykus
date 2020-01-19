@@ -26,10 +26,16 @@ install:
 	go install -v
 
 build-go:
-	env GOOS=$(ARCH) go build -v .
+	env GO111MODULE=on GOOS=$(ARCH) go build -v .
 build-webpack:
 	cd frontend && npm run build
 build: build-go build-webpack
+
+backend-dep:
+	env GO111MODULE=on go get -v -t -d ./
+	env GO111MODULE=on go mod tidy
+frontend-dep:
+	cd frontend && npm install
 
 test:
 	go test ./... -v
