@@ -29,7 +29,7 @@ jobs:
     - name: Setup Go
       uses: actions/setup-go@v1.0.0
       with:
-        go-version: '1.12.14'
+        go-version: '1.13.6'
     - name: setup Go env
       run: |
         echo "::set-env name=GOPATH::$(go env GOPATH)"
