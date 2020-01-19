@@ -29,6 +29,8 @@ jobs:
       uses: actions/checkout@v1
     - name: Setup Go
       uses: actions/setup-go@v1.0.0
+    - name: Install Backend dependencies
+      run: go get
     - name: Build Backend
       run: |
         make build-go
