@@ -1,0 +1,50 @@
+name: Publish to Docker Hub
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  build-frontend:
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v1
+    - name: Install Frontend dependencies
+      run: npm install
+      working-directory: ./frontend
+    - name: Build Frontend
+      run: |
+        make build-webpack
+
+  build-backend:
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v1
+    - name: Build Backend
+      run: |
+        make build-go
+
+  build:
+    needs: [build-frontend, build-backend]
+
+  publish:
+    needs: [build]
+    steps:
+    - name: Docker Hub Description
+      uses: peter-evans/dockerhub-description@v2.1.0
+      env:
+        DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+        DOCKERHUB_PASSWORD: ${{ secrets.DOCKERHUB_PASSWORD }}
+        DOCKERHUB_REPOSITORY: timonback/zephykus
+
+    - name: Docker Hub Push
+      uses: azure/docker-login@v1
+      with:
+        login-server: hub.docker.com
+        username: ${{ secrets.DOCKERHUB_USERNAME }}
+        password: ${{ secrets.DOCKERHUB_PASSWORD }}
+      run: |
+        version=$(cat ./VERSION)
+        echo $VERSION
+        docker build . -t timonback/zephykus:${{ github.sha }}
+        docker push timonback/zephykus:${{ github.sha }}
