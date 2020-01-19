@@ -39,9 +39,7 @@ jobs:
       run: make backend-dep
     - name: Build Backend
       run: |
-        go install ./
-      env:
-        GO111MODULE: "on"
+        make build-go
 
   publish:
     needs: [build-frontend, build-backend]
