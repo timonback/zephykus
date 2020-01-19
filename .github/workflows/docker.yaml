@@ -1,4 +1,4 @@
-name: Publish to Docker Hub
+name: docker
 on:
   push:
     branches:
@@ -15,8 +15,7 @@ jobs:
     - name: Setup Node.js
       uses: actions/setup-node@v1.1.0
     - name: Install Frontend dependencies
-      run: npm install
-      working-directory: ./frontend
+      run: make frontend-dep
     - name: Build Frontend
       run: |
         make build-webpack
@@ -37,14 +36,10 @@ jobs:
         echo "::add-path::$(go env GOPATH)/bin"
       shell: bash
     - name: Install Backend dependencies
-      run: go get -v -t -d ./
-      env:
-        GO111MODULE: "on"
+      run: make backend-dep
     - name: Build Backend
       run: |
         make build-go
-      env:
-        GO111MODULE: "on"
 
   publish:
     needs: [build-frontend, build-backend]
