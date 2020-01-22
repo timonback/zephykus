@@ -84,7 +84,7 @@ jobs:
       uses: actions/download-artifact@v1
       with:
         name: dist
-        path: frontend/
+        path: frontend/dist/
 
     - name: Docker Hub Description
       uses: peter-evans/dockerhub-description@v2.1.0
@@ -103,5 +103,8 @@ jobs:
         version=$(cat ./VERSION)
         echo $VERSION
         cp ./backend/zephykus ./zephykus
+        ls -la
+        ls -la ./frontend/
+        ls -la ./frontend/dist/
         docker build . -t timonback/zephykus:${{ github.sha }}
         docker push timonback/zephykus:${{ github.sha }}
