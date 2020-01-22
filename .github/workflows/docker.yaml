@@ -50,7 +50,7 @@ jobs:
 
         go version
       shell: bash
-    - name: Cache node modules
+    - name: Cache go modules
       uses: actions/cache@v1
       with:
         path: $(go env GOPATH)/pkg/mod
@@ -67,7 +67,7 @@ jobs:
       uses: actions/upload-artifact@v1
       with:
         name: backend
-        path: backend/zephykus
+        path: zephykus
 
   publish:
     needs: [build-frontend, build-backend]
@@ -102,5 +102,6 @@ jobs:
     - run: |
         version=$(cat ./VERSION)
         echo $VERSION
+        cp ./backend/zephykus ./zephykus
         docker build . -t timonback/zephykus:${{ github.sha }}
         docker push timonback/zephykus:${{ github.sha }}
