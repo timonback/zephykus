@@ -30,8 +30,6 @@ build: build-go build-webpack
 
 backend-dep:
 	env GO111MODULE=on go get -v -d ./
-	env GO111MODULE=on go get k8s.io/apimachinery@v0.15.8-beta.0
-	env GO111MODULE=on go get k8s.io/client-go@v0.15.8-beta.0
 backend-dep-update:
 	env GO111MODULE=on go mod tidy
 frontend-dep:
