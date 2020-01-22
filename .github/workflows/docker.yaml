@@ -1,0 +1,107 @@
+name: docker
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  build-frontend:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v1
+    - name: Setup Node.js
+      uses: actions/setup-node@v1.1.0
+    - name: Cache node modules
+      uses: actions/cache@v1
+      with:
+        path: ~/.npm # npm cache files are stored in `~/.npm` on Linux/macOS
+        key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
+        restore-keys: |
+          ${{ runner.os }}-nodebuild-${{ env.cache-name }}-
+          ${{ runner.os }}-nodebuild-
+    - name: Install Frontend dependencies
+      run: make frontend-dep
+    - name: Build Frontend
+      run: |
+        make build-webpack
+    - name: Upload artifact
+      uses: actions/upload-artifact@v1
+      with:
+        name: dist
+        path: frontend/dist/
+
+  build-backend:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v1
+    - name: Setup Go
+      uses: actions/setup-go@v1.1.2
+      with:
+        go-version: '1.13.6'
+    - name: setup Go env
+      run: |
+        echo "::set-env name=GOPATH::$(go env GOPATH)"
+        echo "::add-path::$(go env GOPATH)/bin"
+
+        go version
+      shell: bash
+    - name: Cache go modules
+      uses: actions/cache@v1
+      with:
+        path: $(go env GOPATH)/pkg/mod
+        key: ${{ runner.os }}-node-${{ hashFiles('**/go.sum') }}
+        restore-keys: |
+          ${{ runner.os }}-gobuild-${{ env.cache-name }}-
+          ${{ runner.os }}-gobuild-
+    - name: Install Backend dependencies
+      run: make backend-dep
+    - name: Build Backend
+      run: |
+        make build-go
+    - name: Upload artifact
+      uses: actions/upload-artifact@v1
+      with:
+        name: backend
+        path: zephykus
+
+  publish:
+    needs: [build-frontend, build-backend]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v1
+    - name: Download artifact backend
+      uses: actions/download-artifact@v1
+      with:
+        name: backend
+    - name: Download artifact frontend
+      uses: actions/download-artifact@v1
+      with:
+        name: dist
+        path: frontend/dist/
+
+    - name: Docker Hub Description
+      uses: peter-evans/dockerhub-description@v2.1.0
+      env:
+        DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+        DOCKERHUB_PASSWORD: ${{ secrets.DOCKERHUB_PASSWORD }}
+        DOCKERHUB_REPOSITORY: timonback/zephykus
+
+    - name: Docker Hub Push
+      uses: azure/docker-login@v1
+      with:
+        login-server: https://index.docker.io/v1/
+        username: ${{ secrets.DOCKERHUB_USERNAME }}
+        password: ${{ secrets.DOCKERHUB_PASSWORD }}
+    - run: |
+        version=$(cat ./VERSION)
+        echo $VERSION
+        cp ./backend/zephykus ./zephykus
+        docker build . -t timonback/zephykus:${version} -t timonback/zephykus:latest
+        docker push timonback/zephykus:latest
+        docker push timonback/zephykus:${version}

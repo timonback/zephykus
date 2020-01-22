@@ -1,4 +1,4 @@
-# Zephykus
+# Zephykus ![](https://github.com/timonback/zephykus/workflows/docker/badge.svg)
 
 Zephykus is a tool to visualize ingress rules and flow of network traffic in Kubernetes.
 
