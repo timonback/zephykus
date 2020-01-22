@@ -31,7 +31,7 @@ jobs:
       uses: actions/upload-artifact@v1
       with:
         name: zephykus-node
-        path: dist/../*
+        path: frontend/dist/
 
   build-backend:
     runs-on: ubuntu-latest
