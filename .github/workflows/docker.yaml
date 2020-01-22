@@ -1,8 +1,5 @@
 name: docker
-on:
-  push:
-    branches:
-      - master
+on: [push, pull_request]
 
 jobs:
   build-frontend:
@@ -69,6 +66,7 @@ jobs:
         path: zephykus
 
   publish:
+    if: github.ref == 'master'
     needs: [build-frontend, build-backend]
     runs-on: ubuntu-latest
     timeout-minutes: 5
