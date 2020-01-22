@@ -102,5 +102,6 @@ jobs:
         version=$(cat ./VERSION)
         echo $VERSION
         cp ./backend/zephykus ./zephykus
-        docker build . -t timonback/zephykus:${version}
+        docker build . -t timonback/zephykus:${version} -t timonback/zephykus:latest
+        docker push timonback/zephykus:latest
         docker push timonback/zephykus:${version}
