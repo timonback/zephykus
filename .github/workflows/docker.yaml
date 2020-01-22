@@ -46,7 +46,7 @@ jobs:
 
         go version
 
-        echo {{ github.ref }}
+        echo ${{ github.ref }}
       shell: bash
     - name: Cache go modules
       uses: actions/cache@v1
