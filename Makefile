@@ -29,7 +29,7 @@ build-webpack:
 build: build-go build-webpack
 
 backend-dep:
-	env GO111MODULE=on go get -v -d ./
+	env GO111MODULE=on go mod download
 backend-dep-update:
 	env GO111MODULE=on go mod tidy
 frontend-dep:
