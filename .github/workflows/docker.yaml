@@ -27,13 +27,15 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v1
     - name: Setup Go
-      uses: actions/setup-go@v1.0.0
+      uses: actions/setup-go@v1.1.2
       with:
         go-version: '1.13.6'
     - name: setup Go env
       run: |
         echo "::set-env name=GOPATH::$(go env GOPATH)"
         echo "::add-path::$(go env GOPATH)/bin"
+
+        go version
       shell: bash
     - name: Install Backend dependencies
       run: make backend-dep
