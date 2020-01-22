@@ -19,11 +19,8 @@ IMAGE_NAME      :=      timonback/zephykus
 #
 # It's very common to people set it as `all` but it could be anything
 # like `a`.
-all: install
+all: image
 
-
-install:
-	go install -v
 
 build-go:
 	env GO111MODULE=on GOOS=$(ARCH) go build -v .
@@ -76,4 +73,4 @@ release:
 	git push origin $(VERSION)
 	goreleaser --rm-dist
 
-.PHONY: install test build fmt release
+.PHONY: test build fmt release
