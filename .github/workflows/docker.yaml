@@ -96,15 +96,12 @@ jobs:
     - name: Docker Hub Push
       uses: azure/docker-login@v1
       with:
-        login-server: hub.docker.com
+        login-server: index.docker.io
         username: ${{ secrets.DOCKERHUB_USERNAME }}
         password: ${{ secrets.DOCKERHUB_PASSWORD }}
     - run: |
         version=$(cat ./VERSION)
         echo $VERSION
         cp ./backend/zephykus ./zephykus
-        ls -la
-        ls -la ./frontend/
-        ls -la ./frontend/dist/
-        docker build . -t timonback/zephykus:${{ github.sha }}
-        docker push timonback/zephykus:${{ github.sha }}
+        docker build . -t timonback/zephykus:${version}
+        docker push timonback/zephykus:${version}
