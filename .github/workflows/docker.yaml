@@ -45,6 +45,8 @@ jobs:
         echo "::add-path::$(go env GOPATH)/bin"
 
         go version
+
+        echo {{ github.ref }}
       shell: bash
     - name: Cache go modules
       uses: actions/cache@v1
