@@ -30,7 +30,7 @@ jobs:
     - name: Upload artifact
       uses: actions/upload-artifact@v1
       with:
-        name: zephykus-node
+        name: dist
         path: frontend/dist/
 
   build-backend:
@@ -66,8 +66,8 @@ jobs:
     - name: Upload artifact
       uses: actions/upload-artifact@v1
       with:
-        name: zephykus-go
-        path: zephykus
+        name: backend
+        path: backend/zephykus
 
   publish:
     needs: [build-frontend, build-backend]
@@ -79,11 +79,12 @@ jobs:
     - name: Download artifact backend
       uses: actions/download-artifact@v1
       with:
-        name: zephykus-go
+        name: backend
     - name: Download artifact frontend
       uses: actions/download-artifact@v1
       with:
-        name: zephykus-node
+        name: dist
+        path: frontend/
 
     - name: Docker Hub Description
       uses: peter-evans/dockerhub-description@v2.1.0

@@ -23,23 +23,23 @@ all: image
 
 
 build-go:
-	env GO111MODULE=on GOOS=$(ARCH) go build -v .
+	cd backend && env GO111MODULE=on GOOS=$(ARCH) go build -v .
 build-webpack:
 	cd frontend && npm run build
 build: build-go build-webpack
 
 backend-dep:
-	env GO111MODULE=on go mod download
+	cd backend && env GO111MODULE=on go mod download
 backend-dep-update:
-	env GO111MODULE=on go mod tidy
+	cd backend && env GO111MODULE=on go mod tidy
 frontend-dep:
 	cd frontend && npm install
 
 test:
-	go test ./... -v
+	cd backend && go test ./... -v
 
 fmt:
-	go fmt ./... -v
+	cd backend && go fmt ./... -v
 
 image: build
 	$(DOCKER_CLI) build -t $(IMAGE_NAME) .

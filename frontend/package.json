@@ -11,13 +11,14 @@
   "author": "",
   "license": "ISC",
   "devDependencies": {
+    "@types/cytoscape": "^3.8.6",
     "css-loader": "^3.2.0",
+    "file-loader": "^5.0.2",
     "style-loader": "^1.0.0",
     "ts-loader": "^6.2.1",
     "typescript": "^3.7.2",
     "webpack": "^4.41.2",
-    "webpack-cli": "^3.3.10",
-    "@types/cytoscape": "^3.8.6"
+    "webpack-cli": "^3.3.10"
   },
   "dependencies": {
     "axios": "^0.19.0",
