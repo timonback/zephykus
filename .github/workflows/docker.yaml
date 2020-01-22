@@ -14,11 +14,24 @@ jobs:
       uses: actions/checkout@v1
     - name: Setup Node.js
       uses: actions/setup-node@v1.1.0
+    - name: Cache node modules
+      uses: actions/cache@v1
+      with:
+        path: ~/.npm # npm cache files are stored in `~/.npm` on Linux/macOS
+        key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
+        restore-keys: |
+          ${{ runner.os }}-nodebuild-${{ env.cache-name }}-
+          ${{ runner.os }}-nodebuild-
     - name: Install Frontend dependencies
       run: make frontend-dep
     - name: Build Frontend
       run: |
         make build-webpack
+    - name: Upload artifact
+      uses: actions/upload-artifact@v1
+      with:
+        name: zephykus-node
+        path: dist/../*
 
   build-backend:
     runs-on: ubuntu-latest
@@ -37,11 +50,24 @@ jobs:
 
         go version
       shell: bash
+    - name: Cache node modules
+      uses: actions/cache@v1
+      with:
+        path: $(go env GOPATH)/pkg/mod
+        key: ${{ runner.os }}-node-${{ hashFiles('**/go.sum') }}
+        restore-keys: |
+          ${{ runner.os }}-gobuild-${{ env.cache-name }}-
+          ${{ runner.os }}-gobuild-
     - name: Install Backend dependencies
       run: make backend-dep
     - name: Build Backend
       run: |
         make build-go
+    - name: Upload artifact
+      uses: actions/upload-artifact@v1
+      with:
+        name: zephykus-go
+        path: zephykus
 
   publish:
     needs: [build-frontend, build-backend]
@@ -50,6 +76,14 @@ jobs:
     steps:
     - name: Checkout
       uses: actions/checkout@v1
+    - name: Download artifact backend
+      uses: actions/download-artifact@v1
+      with:
+        name: zephykus-go
+    - name: Download artifact frontend
+      uses: actions/download-artifact@v1
+      with:
+        name: zephykus-node
 
     - name: Docker Hub Description
       uses: peter-evans/dockerhub-description@v2.1.0
