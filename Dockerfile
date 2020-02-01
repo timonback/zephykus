@@ -1,4 +1,4 @@
-FROM debian
-COPY ./zephykus /zephykus
+FROM scratch
+COPY ./zephykus /bin/zephykus
 COPY ./frontend/dist /static/
-ENTRYPOINT /zephykus
+ENTRYPOINT ["/bin/zephykus"]

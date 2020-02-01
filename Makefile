@@ -23,7 +23,7 @@ all: image
 
 
 build-go:
-	env GO111MODULE=on GOOS=$(ARCH) go build -v .
+	env GO111MODULE=on CGO_ENABLED=0 GOOS=$(ARCH) go build -v .
 build-webpack:
 	cd frontend && npm run build
 build: build-go build-webpack
