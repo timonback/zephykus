@@ -1,5 +1,15 @@
 name: docker
-on: [push, pull_request]
+
+on:
+  push:
+    branches:
+      - master
+    tags:
+      - v*
+  pull_request:
+
+env:
+  IMAGE_NAME: zephykus
 
 jobs:
   build-frontend:
@@ -83,12 +93,37 @@ jobs:
         name: dist
         path: frontend/dist/
 
-    - name: Docker Hub Description
-      uses: peter-evans/dockerhub-description@v2.1.0
-      env:
-        DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
-        DOCKERHUB_PASSWORD: ${{ secrets.DOCKERHUB_PASSWORD }}
-        DOCKERHUB_REPOSITORY: timonback/zephykus
+    - name: Build image
+      run: |
+        cp ./backend/zephykus ./zephykus
+        chmod +x ./zephykus
+        docker build . --file Dockerfile --tag $IMAGE_NAME
+
+    - name: Log into GitHub Container Registry
+    # TODO: Create a PAT with `read:packages` and `write:packages` scopes and save it as an Actions secret `CR_PAT`
+      run: echo "${{ secrets.CR_PAT }}" | docker login https://ghcr.io -u ${{ github.actor }} --password-stdin
+
+    - name: Push image to GitHub Container Registry
+      run: |
+        IMAGE_ID=ghcr.io/${{ github.repository_owner }}/$IMAGE_NAME
+
+        # Change all uppercase to lowercase
+        IMAGE_ID=$(echo $IMAGE_ID | tr '[A-Z]' '[a-z]')
+
+        # Strip git ref prefix from version
+        VERSION=$(echo "${{ github.ref }}" | sed -e 's,.*/\(.*\),\1,')
+
+        # Strip "v" prefix from tag name
+        [[ "${{ github.ref }}" == "refs/tags/"* ]] && VERSION=$(echo $VERSION | sed -e 's/^v//')
+
+        # Use Docker `latest` tag convention
+        [ "$VERSION" == "master" ] && VERSION=latest
+
+        echo IMAGE_ID=$IMAGE_ID
+        echo VERSION=$VERSION
+
+        docker tag $IMAGE_NAME $IMAGE_ID:$VERSION
+        docker push $IMAGE_ID:$VERSION
 
     - name: Docker Hub Push
       uses: azure/docker-login@v1
@@ -101,6 +136,13 @@ jobs:
         echo $VERSION
         cp ./backend/zephykus ./zephykus
         chmod +x ./zephykus
-        docker build . -t timonback/zephykus:${version} -t timonback/zephykus:latest
-        docker push timonback/zephykus:latest
-        docker push timonback/zephykus:${version}
+        docker build . -t timonback/$IMAGE_NAME:${version} -t timonback/$IMAGE_NAME:latest
+        docker push timonback/$IMAGE_NAME:latest
+        docker push timonback/$IMAGE_NAME:${version}
+
+    - name: Docker Hub Description
+      uses: peter-evans/dockerhub-description@v2.1.0
+      env:
+        DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+        DOCKERHUB_PASSWORD: ${{ secrets.DOCKERHUB_PASSWORD }}
+        DOCKERHUB_REPOSITORY: timonback/$IMAGE_NAME
